@@ -6,6 +6,7 @@
 //#include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
+#include <cstring>
 
 
 #include <sys/wait.h>
@@ -589,28 +590,94 @@ int  JobsList::getJobsListSize()
     return counter;
 }
 
+bool IsComplexInExternal(string input)
+{
+    if ((input.find('*') != std::string::npos) || (input.find('?') != std::string::npos)) {
+        return true;
+    }
+    return false;
+}
+
+void appendAmpersand(char* str) {
+    strcat(str, "&");
+}
+
+
 
 ExternalCommand::ExternalCommand(const char* cmd_line): Command(cmd_line){}
 
 void ExternalCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
-    pid_t pid = fork(); // here we fork the current procces
-    if (pid == 0) { // son
-        setpgrp();
-        if (execvp(this->arguments[0], this->arguments) == -1) {
-            perror("smash error: execvp failed");
-        }
-        exit(0);
-    }
-    else
+    bool is_complicated = false;
+    for (int i=0 ; i< args_size; i++)
     {
-        smash.jobs_list.addJob(this,pid,false);
-        int job_pid = smash.jobs_list.getLastJob()->j_id;
+        if (IsComplexInExternal(arguments[i]))
+        {
+            is_complicated = true;
+        }
+    }
+    bool is_background = _isBackgroundComamnd(cmd_line);
+    // now we know 4 states complicated and backgroud
 
+    pid_t pid = fork(); // here we fork the current procces
+    if (pid == -1)
+    {
+        perror("smash error: fork failed");
+        return;
+    }
+    if (pid == 0) { // son
+        if(setpgrp() == -1)
+        {
+            perror("smash error: setpgrp failed");
+            return;
+        }
+
+        if (is_complicated)
+        {
+            char *bash_args[] = {
+                    (char *) "/bin/bash",
+                    (char *) "-c",
+                    &cmd_line[0],
+                    nullptr
+            };
+            if(execvp(bash_args[0], bash_args) == -1)
+            {
+                perror("smash error: execvp failed");
+                return;
+            }
+        }
+        else
+        {
+            char **cmd_args = new char * ;
+            for(int i=0;i<args_size;i++)
+            {
+                cmd_args[i]=&arguments[i][0];
+            }
+            cmd_args[args_size]= NULL;
+            if(execvp(arguments[0], cmd_args) ==-1)
+            {
+                perror("smash error: execvp failed");
+                return;
+            }
+        }
+    }
+    else // father
+    {
+        if(is_background) {
+            appendAmpersand(this->cmd_line);
+            smash.jobs_list.addJob(this, pid, false);
+        }
+        else{
+            pid = waitpid(pid,&status, WUNTRACED);
+            if(pid == -1)
+            {
+                perror("smash error: waitpid failed");
+                return;
+            }
+        }
     }
 
-    // after fork check ppid==0 i am doing setpgrp() and then i am exce him if father i am get pid=son and puting father on wait and into job list
-}
+
 
 RedirectionCommand::RedirectionCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
