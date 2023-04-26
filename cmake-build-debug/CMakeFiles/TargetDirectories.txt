@@ -1,0 +1,3 @@
+C:/Users/eitan/OneDrive/Desktop/os_hw1/cmake-build-debug/CMakeFiles/os_hw1.dir
+C:/Users/eitan/OneDrive/Desktop/os_hw1/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/eitan/OneDrive/Desktop/os_hw1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
