@@ -101,20 +101,18 @@ public:
 class JobsList {
 public:
     class JobEntry {
-  public:
-      int j_id;
-      int j_process_id;
-      Command* j_command;
-      time_t time_job;
-      bool is_stopped;
+      public:
+        int j_id;
+        int j_process_id;
+        Command* j_command;
+        time_t time_job;
+        bool is_stopped;
 //      bool is_background;
 //      bool is_stopped;
 //      bool is_timed_job;
-      JobEntry(int j_id, int j_process_id, Command* j_command, bool is_stopped, time_t time_job= time(0));
-      virtual ~JobEntry() {}
-
-   // TODO: Add your data members
-  };
+        JobEntry(int j_id, int j_process_id, Command* j_command, bool is_stopped, time_t time_job= time(0));
+        virtual ~JobEntry() {}
+    };
 
   vector<JobEntry> jobs_list;
   int counter;
@@ -189,7 +187,6 @@ class GetFileTypeCommand : public BuiltInCommand {
 class SetcoreCommand : public BuiltInCommand {
   // TODO: Add your data members
  public:
-  JobsList* jobs_list;
   SetcoreCommand(const char* cmd_line);
   virtual ~SetcoreCommand() {}
   void execute() override;
@@ -197,8 +194,7 @@ class SetcoreCommand : public BuiltInCommand {
 
 class KillCommand : public BuiltInCommand {
 public:
-  JobsList* jobs_list;
-  KillCommand(const char* cmd_line, JobsList* jobs);
+  KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
   void execute() override;
 };

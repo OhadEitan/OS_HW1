@@ -38,8 +38,8 @@ void alarmHandler(int sig_num) {
   // TODO: Add your implementation
     SmallShell& smash = SmallShell::getInstance();
     cout << "smash: got an alarm" << endl;
-    smash.
-    ((SmallShell*)running_smash)->handle_alarm();
+//    smash.
+//    ((SmallShell*)running_smash)->handle_alarm();
 
 
 }
