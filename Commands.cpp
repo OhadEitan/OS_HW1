@@ -212,7 +212,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     ///JobsList::removeFinishedTimes();
     Command *cmd = CreateCommand(cmd_line);
     if (cmd == nullptr) {
-        return;
+        delete cmd;
     }
     cmd->execute();
 }
@@ -824,6 +824,7 @@ void ExternalCommand::execute() {
 PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {}
 
 void PipeCommand::execute() {
+    SmallShell &smash = SmallShell::getInstance();
 
     ////“|” will produce a pipe which redirects command1 stdout to its write channel and command2 std
     ////“|&” will produce a pipe which redirects command1 stderr to the pipe’s write channel and command2 stdin to the pipe’s read channel.
@@ -848,41 +849,73 @@ void PipeCommand::execute() {
             return;
         } else {
             int pipeChannel;
-            if (symbol == "|")
+            if (symbol == "|") {
+                pipeChannel = 1;
+            } else //symbol is |&
             {
-                pipeChannel =1;
+                pipeChannel = 2;
             }
-            else //symbol is |&
-            {
-                pipeChannel =2;
-            }
-            int pid = fork();
+
+            bool ischild = false;
+            __pid_t pid = fork();
             if (pid < 0) {
                 perror("smash error: fork failed");
-                if(close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
+                if (close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
                     perror("smash error: close failed");
                 }
                 return;
             }
-            if (pid == 0) { //child
-                if(setpgrp() == -1)
-                {
+            if (pid == 0) {
+                if (setpgrp() == -1) {
                     perror("smash error: setpgrp failed");
-                    if(close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1)
-                    {
+                    if (close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
                         perror("smash error: close failed");
                     }
                     return;
                 }
-
                 close(pipe_fd[0]); // son close reading
-                write(pipe_fd[1], "" , buff);
-            } else { //father
-                close(pipe_fd[1]); // son close reading
-                write(pipe_fd[0], "" , buff);
+                if (dup2(pipe_fd[1], pipeChannel) == -1) {
+                    perror("smash error: dup2 failed");
+                    if (close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
+                        perror("smash error :close failed");
+                    }
+                    return;
+                }
 
+                ischild = true;
+                smash.executeCommand(first_command.c_str());
+
+                if (close(pipe_fd[1]) == -1) {
+                    perror("smash error: close failed");
+                }
+                exit(0);
+            } else {
+                ischild = false;
+                close(pipe_fd[1]);
+                int saved_std_in = dup(0);
+                if (saved_std_in == -1) {
+                    perror("smash error: dup failed");
+                    return;
+                }
+                if (dup2(pipe_fd[0], 0) == -1) {
+                    perror("smash error: dup failed");
+                    return;
+                }
+
+                smash.executeCommand(second_command.c_str());
+                if (close(pipe_fd[0]) == -1) {
+                    perror("smash error: close failed");
+                }
+                if (dup2(saved_std_in, 0) == -1) {
+                    perror("smash error: dup failed");
+                    return;
+                }
+                if (close(saved_std_in) == -1) {
+                    perror("smash error: close failed");
+                }
             }
-        } }
+        }
+    }
 }
 
 
