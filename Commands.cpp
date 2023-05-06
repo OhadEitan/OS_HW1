@@ -118,7 +118,7 @@ Command::~Command() {
     delete[] this->cmd_line;
 }
 
-SmallShell::SmallShell(): prompt("smash>"),jobs_list()  {
+SmallShell::SmallShell(): prompt("smash> "),jobs_list()  {
 // TODO: add your implementation
     smash_pid= getpid();
     if (smash_pid == -1) // when pid didnt work
@@ -142,7 +142,15 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    if((cmd_s).find(">") != std::string::npos)
+    {
+        return new RedirectionCommand(cmd_line);
+    }
 
+    if((cmd_s).find("|") != std::string::npos)
+    {
+        return new PipeCommand(cmd_line);
+    }
   if (firstWord.compare("pwd") == 0) {
     return new GetCurrDirCommand(cmd_line);
   }
@@ -175,7 +183,10 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
   {
       return new KillCommand(cmd_line);
   }
-
+  else if (firstWord.compare("setcore") == 0)
+  {
+      return new SetcoreCommand(cmd_line);
+  }
   else {
       return new ExternalCommand(cmd_line);
   }
@@ -226,7 +237,7 @@ void PromptCommand::execute() {
     if (this->args_size > 1) {
         updated_name = this->arguments[1];
     }
-    updated_name.append(">");
+    updated_name.append("> ");
     SmallShell & shell = SmallShell::getInstance();
     shell.prompt = updated_name;
 }
@@ -281,6 +292,8 @@ void ChangeDirCommand::execute()
                     if (result == 0)
                     {
                         ChangeDirCommand::path_history.pop_back(); //now prev dir is update
+                        ChangeDirCommand::path_history.push_back(current_dir);
+
                     }
                 }
             }
@@ -597,6 +610,16 @@ bool isDigitsOnly(string str) {
     return true;
 }
 
+bool isNumber(string str) {
+    string is_number = str.substr(1, str.size() - 1);
+    for (char c : is_number) {
+        if (!std::isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 //bool is_legit_signal_num(string word)
 //{
@@ -626,19 +649,14 @@ void KillCommand::execute()
     smash.jobs_list.removeFinishedJobs();
     string str_signal = string(this->arguments[1]);
     string signal_num = str_signal.substr(1,str_signal.length());//cut the "-" that comes before the number
-    cout << "*1*" << endl;
-    if(!isDigitsOnly(this->arguments[2]) ||
+    if(!isNumber(this->arguments[2]) ||
        this->arguments[1][0] != '-' || !isDigitsOnly(signal_num)){
         cerr<< "smash error: kill: invalid arguments" <<endl;
-        cout << "*2*" << endl;
-
         return;
     }
     int job_id = stoi(this->arguments[2]);
     if(smash.jobs_list.getJobById(job_id)== nullptr){
         cerr << "smash error: kill: job-id " << job_id << " does not exist" << endl;
-        cout << "*3*" << endl;
-
         return;
     }
     int signal = stoi(signal_num);
@@ -647,38 +665,27 @@ void KillCommand::execute()
     if(kill(job_pid,signal)== -1)
     {
         perror("smash error : kill failed");
-        cout << "*8*" << endl;
         return;
     }
     else{
         cout << "signal number " << signal << " was sent to pid " << job_pid << endl;
-        cout << "*9*" << endl;
-
     }
 
     if(signal == SIGCONT)
     {
         smash.jobs_list.getJobById(job_id)->is_stopped = false;
-        cout << "*4*" << endl;
-
         // return;
     }
     if(signal == SIGSTOP)
     {
         smash.jobs_list.getJobById(job_id)->is_stopped = true;
-        cout << "*5*" << endl;
-
         //return;
     }
     if(signal == SIGKILL){
         smash.jobs_list.removeJobById(job_id);
-        cout << "*6*" << endl;
-
     }
     if(signal == SIGTERM) {
         smash.jobs_list.removeJobById(job_id);
-        cout << "*7*" << endl;
-
     }
 
 }
