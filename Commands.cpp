@@ -111,11 +111,21 @@ Command::Command(const char* cmd_line)
 }
 
 Command::~Command() {
-    for (int j = 0; j < this->args_size; j++) {
-        free(this->arguments[j]);
+    if (cmd_line != nullptr) {
+        delete[] cmd_line;
     }
-    delete[] this->arguments;
-    delete[] this->cmd_line;
+
+    // Free memory allocated for each argument in arguments
+    if (arguments != nullptr) {
+        for (int i = 0; i < args_size; i++) {
+            if (arguments[i] != nullptr) {
+                delete[] arguments[i];
+            }
+        }
+
+        // Free memory allocated for arguments
+        delete[] arguments;
+    }
 }
 
 
@@ -132,7 +142,7 @@ SmallShell::SmallShell(): prompt("smash> "),jobs_list(), current_fg_pid(-1), cmd
     }
 }
 
-SmallShell::~SmallShell() {}
+
 
 BuiltInCommand::BuiltInCommand(const char* cmd_line) : Command(cmd_line) {};
 
@@ -332,13 +342,19 @@ JobsList::JobEntry::JobEntry(int j_id, int j_process_id, Command* j_command, boo
 
 JobsList::JobsList() : jobs_list({}), counter(0){}
 
-JobsList::~JobsList()  {
 
-    auto it = this->jobs_list.begin();
-    while (it != this->jobs_list.end()) {
-        delete &it;
-        it++;
+//JobsList::JobEntry::~JobEntry() {
+//    // Free memory allocated for j_command
+//    delete j_command;
+//}
+
+
+JobsList::~JobsList() {
+    // Free memory allocated for each JobEntry in jobs_list
+    for (auto& job_entry : jobs_list) {
+        delete job_entry.j_command;
     }
+
 }
 
 
@@ -375,6 +391,7 @@ void JobsCommand::execute()
     this->jobs_list->removeFinishedJobs();
     this->jobs_list->printJobsList();
 }
+
 
 void JobsList::removeFinishedJobs() {
     int stat;
@@ -714,20 +731,13 @@ QuitCommand::QuitCommand(const char* cmd_line) : BuiltInCommand(cmd_line){}
 void QuitCommand::execute()
 {
     SmallShell& smash = SmallShell::getInstance();
-    smash.jobs_list.removeFinishedJobs();
-    if (args_size == 1)
-    {
-        exit(0);
-
-    }
-    else {
-        if (strcmp(arguments[1], "kill") == 0 && this->args_size > 1)
-        {
-             cout << "smash: sending SIGKILL signal to " << smash.jobs_list.getJobsListSize() <<" jobs:" <<endl;
-             smash.jobs_list.killAllJobs();
+    if (this->args_size > 1) {
+        if (strcmp(arguments[1], "kill") == 0) {
+            cout << "smash: sending SIGKILL signal to " << smash.jobs_list.getJobsListSize() << " jobs:" << endl;
+            smash.jobs_list.killAllJobs();
         }
-        exit(0);
     }
+   exit(0);
 }
 
 int  JobsList::getJobsListSize()

@@ -108,7 +108,7 @@ public:
 //      bool is_stopped;
 //      bool is_timed_job;
         JobEntry(int j_id, int j_process_id, Command* j_command, bool is_stopped, time_t time_job= time(0));
-        virtual ~JobEntry() {}
+        //~JobEntry();
     };
 
   vector<JobEntry> jobs_list;
@@ -235,7 +235,7 @@ class SmallShell {
     // Instantiated on first use.
     return instance;
   }
-  ~SmallShell();
+  ~SmallShell() = default;
   void executeCommand(const char* cmd_line);
   void Chprompt(string command);
   string getPrompt();
