@@ -118,9 +118,13 @@ Command::~Command() {
     delete[] this->cmd_line;
 }
 
-SmallShell::SmallShell(): prompt("smash> "),jobs_list()  {
+
+
+
+SmallShell::SmallShell(): prompt("smash> "),jobs_list(), current_fg_pid(-1), cmd_running("")  {
 // TODO: add your implementation
     smash_pid= getpid();
+
     if (smash_pid == -1) // when pid didnt work
     {
         perror("smash error: getpid failed");
@@ -219,11 +223,22 @@ void convertCmdLineToArgs(string cmd_line, vector<string>* arguments){
 
 void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
+    SmallShell& smash = SmallShell::getInstance();
+    smash.cmd_running = string(cmd_line);
     jobs_list.removeFinishedJobs();
     ///JobsList::removeFinishedTimes();
     Command *cmd = CreateCommand(cmd_line);
     if (cmd == nullptr) {
         delete cmd;
+    }
+    if (_isBackgroundComamnd(cmd_line))
+    {
+        smash.current_fg_pid = -1;
+    }
+    else
+    {
+        smash.current_fg_pid = 1;
+
     }
     cmd->execute();
 }
@@ -299,10 +314,12 @@ void ChangeDirCommand::execute()
             }
             else {
                 result = chdir(this->arguments[1]); // new directory is
-                ChangeDirCommand::path_history.push_back(current_dir);
                 if (result != 0) {
                     // you have an error :(
-                    cerr <<"smash error: cd: chdir failed" << endl;
+                    cerr <<"smash error: chdir failed: No such file or directory" << endl;
+                }
+                else{
+                    ChangeDirCommand::path_history.push_back(current_dir);
                 }
             }
         }
@@ -329,7 +346,7 @@ JobsList::~JobsList()  {
 
 int JobsList::getHighestJob()
 {
-    int max = -1;
+    int max = 0;
     auto it = this->jobs_list.begin();
     while (it != this->jobs_list.end()) {
         if(it->j_id > max)
@@ -839,16 +856,17 @@ void PipeCommand::execute() {
     string second_command = "";
     if (string(cmd_line).find("|&") != std::string::npos) {
         pipe_symbol = "|&";
-        second_command = string(cmd_line).substr(0, string(cmd_line).find("|") + 2);
+        second_command = string(cmd_line).substr(string(cmd_line).find("|&") + 2);
     } else {
         pipe_symbol = "|";
-        second_command = string(cmd_line).substr(0, string(cmd_line).find("|") + 1);
+        second_command = string(cmd_line).substr(string(cmd_line).find("|") + 1);
     }
     if (pipe_symbol == "") {
         ////handle invalid input (perror here needs to be changed)
         perror("smash error: pipe failed");
         return;
     } else {
+
         string first_command = string(cmd_line).substr(0, string(cmd_line).find("|"));
         int pipe_fd[2];
         if (pipe(pipe_fd) != 0) {
@@ -856,7 +874,7 @@ void PipeCommand::execute() {
             return;
         } else {
             int pipeChannel;
-            if (symbol == "|") {
+            if (pipe_symbol == "|") {
                 pipeChannel = 1;
             } else //symbol is |&
             {
@@ -924,6 +942,7 @@ void PipeCommand::execute() {
         }
     }
 }
+
 
 
 GetFileTypeCommand::GetFileTypeCommand(const char *cmd_line) : BuiltInCommand(cmd_line){}

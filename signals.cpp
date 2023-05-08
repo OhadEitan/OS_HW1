@@ -10,11 +10,16 @@ void ctrlZHandler(int sig_num) {
     // TODO: Add your implementation
     SmallShell& smash = SmallShell::getInstance();
     cout << "smash: got ctrl-Z" << endl;
-    if(smash.current_fg_pid >= 0)
+    if (smash.current_fg_pid < 0 )
     {
-        smash.jobs_list.getJobByPID(smash.current_fg_pid)->is_stopped = true;
-        kill(smash.current_fg_pid, SIGSTOP);
+        return;
+    }
+    else {
+        cout << "1" << endl;
+        //smash.jobs_list.getJobByPID(smash.current_fg_pid)->is_stopped = true;
         cout << "smash: process " << smash.current_fg_pid << " was stopped" << endl;
+        kill(smash.current_fg_pid, SIGSTOP);
+        smash.jobs_list.addJob(new ExternalCommand(smash.cmd_running.c_str()) , 0, true);
         smash.current_fg_pid = -1;
     }
 }

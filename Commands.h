@@ -42,9 +42,6 @@ class ExternalCommand : public Command {
 class PipeCommand : public Command {
   // TODO: Add your data members
  public:
-    std::string first_command;
-    std::string second_command;
-    std::string symbol;
   PipeCommand(const char* cmd_line);
   virtual ~PipeCommand() {}
   void execute() override;
@@ -202,6 +199,7 @@ public:
 class SmallShell {
  private:
  public:
+    string cmd_running;
     string prompt;
     JobsList jobs_list;
     int smash_pid;
