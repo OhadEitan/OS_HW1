@@ -247,7 +247,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     }
     else
     {
-        smash.current_fg_pid = 1;
+        smash.current_fg_pid = 1; //TODO: check if this is the write value
 
     }
     cmd->execute();
@@ -627,7 +627,7 @@ void BackgroundCommand::execute() {
 
     int res = kill(selectedJob->j_process_id, SIGCONT);
     if (res == -1) {
-        cout << "smash dont kill!!!!!!" << endl;
+        cout << "smash doesnt kill!!!!!!" << endl;
         exit(1);
     }
     selectedJob->is_stopped = false;
@@ -648,6 +648,15 @@ bool isNumber(string str) {
     string is_number = str.substr(1, str.size() - 1);
     for (char c : is_number) {
         if (!std::isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int isOctalDigit(string str) {
+    for(char c : str) {
+        if(!isdigit(c) || c < '0' || c > '7') {
             return false;
         }
     }
@@ -819,6 +828,9 @@ void ExternalCommand::execute() {
             if (is_background)
             {
                 deleteLastChar( this->arguments[args_size-1]);
+            }
+            else{
+                smash.current_fg_pid = getpid(); //TODO:make sure its the correct way
             }
             char **cmd_args = new char * ;
             for(int i=0;i<args_size;i++)
@@ -1088,6 +1100,26 @@ void RedirectionCommand::execute() {
         return;
     }
 }
+
+ChmodCommand::ChmodCommand(const char *cmd_line) : Command(cmd_line){}
+
+void ChmodCommand::execute() {
+    SmallShell& smash = SmallShell::getInstance();
+    if(this->args_size != 3 || !isOctalDigit(this->arguments[1])){
+        cerr<<"smash error: chmod: invalid arguments"<<endl;
+        return;
+    }
+
+    long int mode = strtol(this->arguments[1],NULL, 8);
+    string path = this->arguments[2];
+
+    if(chmode(path,mode) == -1){
+        perror("smash error: chmod failed");
+        return;
+    }
+}
+
+
 
 
 
