@@ -232,7 +232,6 @@ void convertCmdLineToArgs(string cmd_line, vector<string>* arguments){
 
 
 void SmallShell::executeCommand(const char *cmd_line) {
-    // TODO: Add your implementation here
     SmallShell& smash = SmallShell::getInstance();
     smash.cmd_running = string(cmd_line);
     jobs_list.removeFinishedJobs();
@@ -245,11 +244,11 @@ void SmallShell::executeCommand(const char *cmd_line) {
     {
         smash.current_fg_pid = -1;
     }
-    else
-    {
-        smash.current_fg_pid = 1; //TODO: check if this is the write value
-
-    }
+//    else
+//    {
+//        smash.current_fg_pid = 1; //TODO: check if this is the right value
+//
+//    }
     cmd->execute();
 }
 
@@ -828,6 +827,7 @@ void ExternalCommand::execute() {
             if (is_background)
             {
                 deleteLastChar( this->arguments[args_size-1]);
+                smash.current_fg_pid = -1; //TODO: do this to every background situation
             }
             else{
                 smash.current_fg_pid = getpid(); //TODO:make sure its the correct way
@@ -856,6 +856,7 @@ void ExternalCommand::execute() {
         }
         else{
             pid = waitpid(pid,&status, WUNTRACED);
+            smash.current_fg_pid = -1; //TODO:check this is the right place - for fg
             if(pid == -1)
             {
                 perror("smash error: waitpid failed");
