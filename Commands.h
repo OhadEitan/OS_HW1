@@ -118,6 +118,7 @@ public:
   ~JobsList();
   void addJob(Command* cmd, int pid, bool isStopped = false, int job_id = -1);
   void printJobsList();
+  int FindMaxStoppedJobIdInList();
   void killAllJobs();
   void removeFinishedJobs();
   JobEntry* getJobById(int jobId);

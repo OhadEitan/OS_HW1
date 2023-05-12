@@ -77,7 +77,7 @@ int _parseCommandLine(const char* cmd_line, char** args) {
     FUNC_EXIT()
 }
 
-bool _isBackgroundComamnd(const char* cmd_line) {
+bool _isBackgroundCommand(const char* cmd_line) {
     const string str(cmd_line);
     return str[str.find_last_not_of(WHITESPACE)] == '&';
 }
@@ -251,7 +251,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     if (cmd == nullptr) {
         delete cmd;
     }
-    if (_isBackgroundComamnd(cmd_line))
+    if (_isBackgroundCommand(cmd_line))
     {
         smash.current_fg_pid = -1;
     }
@@ -388,7 +388,7 @@ int JobsList::getHighestJob()
 void JobsList::addJob(Command *cmd, int pid, bool isStopped, int job_id) {
     JobsList::removeFinishedJobs();
     int job_highest;
-    if(job_id == -1) {
+    if(job_id <=0) {
         job_highest = JobsList::getHighestJob();
         job_highest += 1;
         jobs_list.push_back(JobEntry(job_highest, pid, cmd,isStopped));
@@ -452,6 +452,17 @@ void JobsList::printJobsList() {
             cout << "[" << job_id << "] " << command << " : " << p_id << " " << time_passed << " secs" << endl;
         }
     }
+}
+int JobsList::FindMaxStoppedJobIdInList(){
+    vector<JobEntry>::iterator it= this->jobs_list.begin();
+    int max_job_id = 0;
+    while (it != this->jobs_list.end()) {
+        if(it->is_stopped == true){
+            max_job_id = it->j_id;
+        }
+        it++;
+    }
+    return max_job_id;
 }
 
 JobsList::JobEntry* JobsList::getJobById(int jobId)
@@ -630,6 +641,7 @@ void ForegroundCommand::execute() {
 
 
 
+
 BackgroundCommand::BackgroundCommand(const char* cmd_line, JobsList* jobs)
         : BuiltInCommand(cmd_line), jobs_list(jobs) {}
 
@@ -641,6 +653,11 @@ void BackgroundCommand::execute() {
         return;
     }
     if (this->args_size == 2) {
+        if(this->arguments[1][0]!='-' &&!isDigitsOnly(this->arguments[1])){
+            cerr << "smash error: bg: invalid arguments" << endl;
+            return;
+        }
+
         int jobId = atoi(this->arguments[1]);
         selectedJob = smash.jobs_list.getJobById(jobId);
         if (selectedJob == nullptr) {
@@ -650,14 +667,27 @@ void BackgroundCommand::execute() {
             cerr << error << endl;
             return;
         }
+        if(selectedJob->is_stopped == false){
+            cerr<< "smash error: bg: job-id "<< jobId <<" is already running in the background"<<endl;
+            return;
+        }
     }
-
-
+    else if(this->args_size==1){
+        int max_job_id = smash.jobs_list.FindMaxStoppedJobIdInList();
+        if(max_job_id!=0){
+            selectedJob = smash.jobs_list.getJobById(max_job_id);
+        }
+        else{
+            cerr<<"smash error: bg: there is no stopped jobs to resume"<<endl;
+            return;
+        }
+    }
     int res = kill(selectedJob->j_process_id, SIGCONT);
     if (res == -1) {
         cout << "smash doesnt kill!!!!!!" << endl;
         exit(1);
     }
+    cout << selectedJob->j_command->cmd_line << " : " <<  selectedJob->j_process_id << endl;
     selectedJob->is_stopped = false;
     return;
 
@@ -815,7 +845,7 @@ void ExternalCommand::execute() {
             is_complicated = true;
         }
     }
-    bool is_background = _isBackgroundComamnd(cmd_line);
+    bool is_background = _isBackgroundCommand(cmd_line);
     // now we know 4 states complicated and backgroud
 
     pid_t pid = fork(); // here we fork the current procces
