@@ -113,9 +113,10 @@ public:
 
   vector<JobEntry> jobs_list;
   int counter;
+  int job_id_moves_from_bg_to_fg;
   JobsList();
   ~JobsList();
-  void addJob(Command* cmd, int pid, bool isStopped = false);
+  void addJob(Command* cmd, int pid, bool isStopped = false, int job_id = -1);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();

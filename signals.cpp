@@ -15,11 +15,13 @@ void ctrlZHandler(int sig_num) {
         return;
     }
     else {
-        cout << "1" << endl;
-        //smash.jobs_list.getJobByPID(smash.current_fg_pid)->is_stopped = true;
+        //cout << "1" << endl;
+        smash.jobs_list.getJobByPID(smash.current_fg_pid)->is_stopped = true;
+        string cmd_to_stop = smash.jobs_list.getJobByPID(smash.current_fg_pid)->j_command->cmd_line;
         cout << "smash: process " << smash.current_fg_pid << " was stopped" << endl;
+        //string cmd_to_stop = smash.cmd_running;
         kill(smash.current_fg_pid, SIGSTOP);
-        smash.jobs_list.addJob(new ExternalCommand(smash.cmd_running.c_str()) , 0, true);
+        smash.jobs_list.addJob(new ExternalCommand(cmd_to_stop.c_str()) , smash.current_fg_pid, true,smash.jobs_list.job_id_moves_from_bg_to_fg);
         smash.current_fg_pid = -1;
     }
 }
