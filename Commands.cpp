@@ -216,6 +216,14 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     return nullptr;
 }
 
+bool isDigitsOnly(string str) {
+    for (char c : str) {
+        if (!std::isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
 
 void convertCmdLineToArgs(string cmd_line, vector<string>* arguments){
     const char* command = cmd_line.c_str();
@@ -383,11 +391,14 @@ void JobsList::addJob(Command *cmd, int pid, bool isStopped, int job_id) {
     if(job_id == -1) {
         job_highest = JobsList::getHighestJob();
         job_highest += 1;
+        jobs_list.push_back(JobEntry(job_highest, pid, cmd,isStopped));
     }
     else{
         job_highest = job_id;
+        jobs_list.insert(jobs_list.begin() + job_highest-1 ,JobEntry(job_highest, pid, cmd,isStopped));
+
     }
-    jobs_list.push_back(JobEntry(job_highest, pid, cmd,isStopped));
+
 }
 
 JobsCommand::JobsCommand(const char* cmd_line, JobsList* jobs):
@@ -559,18 +570,27 @@ ForegroundCommand::ForegroundCommand(const char* cmd_line, JobsList* jobs):
 void ForegroundCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
     JobsList::JobEntry *selectedJob;
-    if (this->args_size > 2) {
-        perror("smash error: fg: invalid arguments");
+    if (this->args_size > 2 ) {
+        //perror("smash error: fg: invalid arguments");
+        cerr << "smash error: fg: invalid arguments" << endl;
         return;
 
     }
+
     if (this->args_size == 2) {
+
+        if(this->arguments[1][0]!='-' &&!isDigitsOnly(this->arguments[1])){
+            cerr << "smash error: fg: invalid arguments" << endl;
+            return;
+        }
+
         selectedJob = this->jobs_list->getJobById(stoi(this->arguments[1]));
         if (selectedJob == nullptr) {
             string error = "smash error: fg: job-id ";
             error.append(this->arguments[1]);
             error.append(" does not exist");
-            perror(error.c_str());
+            //perror(error.c_str());
+            cerr << error<< endl;
             return;
 
         }
@@ -617,7 +637,7 @@ void BackgroundCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
     JobsList::JobEntry *selectedJob;
     if (this->args_size > 2) {
-        perror("smash error: bg: invalid arguments");
+        cerr<<"smash error: bg: invalid arguments"<<endl;
         return;
     }
     if (this->args_size == 2) {
@@ -627,7 +647,7 @@ void BackgroundCommand::execute() {
             string error = "smash error: bg: job-id ";
             error.append(this->arguments[1]);
             error.append(" does not exist");
-            perror(error.c_str());
+            cerr << error << endl;
             return;
         }
     }
@@ -643,14 +663,7 @@ void BackgroundCommand::execute() {
 
 }
 
-bool isDigitsOnly(string str) {
-    for (char c : str) {
-        if (!std::isdigit(c)) {
-            return false;
-        }
-    }
-    return true;
-}
+
 
 bool isNumber(string str) {
     string is_number = str.substr(1, str.size() - 1);
