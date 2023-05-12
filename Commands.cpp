@@ -696,14 +696,24 @@ void BackgroundCommand::execute() {
 
 
 bool isNumber(string str) {
-    string is_number = str.substr(1, str.size() - 1);
-    for (char c : is_number) {
-        if (!std::isdigit(c)) {
+//    string is_number = str.substr(0, str.size()-1);
+//    for (char c : is_number) {
+//        if (!std::isdigit(c)) {
+//            return false;
+//        }
+//    }
+//    //return true;
+
+    for (int i = 0; i < str.size(); i++) {
+        if (!std::isdigit(str[i])) {
             return false;
         }
     }
+
+    // the string represents a valid integer
     return true;
 }
+
 
 int isOctalDigit(string str) {
     for(char c : str) {
@@ -731,6 +741,8 @@ int isOctalDigit(string str) {
 //    return false;
 //}
 
+
+
 KillCommand::KillCommand(const char* cmd_line) : BuiltInCommand(cmd_line){}
 
 void KillCommand::execute()
@@ -743,10 +755,17 @@ void KillCommand::execute()
     smash.jobs_list.removeFinishedJobs();
     string str_signal = string(this->arguments[1]);
     string signal_num = str_signal.substr(1,str_signal.length());//cut the "-" that comes before the number
-    if(!isNumber(this->arguments[2]) ||
+    if((this->arguments[2][0] != '-'&&!isNumber(this->arguments[2])) ||
        this->arguments[1][0] != '-' || !isDigitsOnly(signal_num)){
         cerr<< "smash error: kill: invalid arguments" <<endl;
         return;
+    }
+    if(this->arguments[1][0]=='-'){
+        int kill_num = stoi(string(this->arguments[1]).substr(1));
+        if(kill_num<0 || kill_num>31){
+            cerr<< "smash error: kill: invalid arguments" <<endl;
+            return;
+        }
     }
     int job_id = stoi(this->arguments[2]);
     if(smash.jobs_list.getJobById(job_id)== nullptr){

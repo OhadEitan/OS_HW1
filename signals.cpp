@@ -32,6 +32,7 @@ void ctrlZHandler(int sig_num) {
         //string cmd_to_stop = smash.cmd_running;
         kill(smash.current_fg_pid, SIGSTOP);
         smash.jobs_list.addJob(command , smash.current_fg_pid, true,smash.jobs_list.job_id_moves_from_bg_to_fg);
+        smash.jobs_list.job_id_moves_from_bg_to_fg = -1;
         smash.current_fg_pid = -1;
     }
 }
