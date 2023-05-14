@@ -9,16 +9,17 @@
 #include "Commands.h"
 #include <cstring>
 
-
 #include <sys/wait.h>
-#include <fcntl.h>
+#include <sys/types.h>
+#include "fcntl.h"
 #include <sched.h>
 #include <thread>
-
 #include <sys/stat.h>
-#include  <sys/sysinfo.h>
+
+
+#include <sys/sysinfo.h>
 #include <sched.h>
-//#include <string>
+
 
 using namespace std;
 #define MAX_ARGS_IN_CMD 20
@@ -203,6 +204,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     }
     else if(firstWord.compare("chmod") == 0){
         return new ChmodCommand(cmd_line);
+    }
+    else if(firstWord.compare("getfiletype") == 0){
+        return new GetFileTypeCommand(cmd_line);
     }
     else {
         return new ExternalCommand(cmd_line);
@@ -1052,37 +1056,39 @@ void GetFileTypeCommand::execute() {
     }
     else{
         struct stat file_info;
-        if(stat(path,&file_info)==-1){
-            cerr<<"smash error: gettype: invalid arguments"<<endl;
+        if(stat(this->arguments[1],&file_info)==-1){
+            perror("smash error: stat failed");
             return;
         }
         else{
-            //TODO:here do switch-case for the values of st_mode
-            string type="";
-            switch(file_info.st_mode){
-                case 'S_IFREG':
-                    type = "Regular file";
-                    break;
-                case 'S_IFDIR':
-                    type = "Directory";
-                    break;
-                case 'S_IFLNK':
-                    type = "Symbolic link";
-                    break;
-                case 'S_IFIFO':
-                    type = "FIFO";
-                    break;
-                case 'S_IFSOCK':
-                    type = "Socket";
-                    break;
-                case 'S_IFCHR':
-                    type = "Character device";
-                    break;
-                case 'S_IFBLK':
-                    type = "Block device";
-                    break;
+            string type;
+            mode_t mode = file_info.st_mode;
+
+            if(S_ISREG(mode)) {
+                type = "regular file";
             }
-            cout<<path<<"'s type is "<<'"'<<type<<'" and takes up '<<file_info.st_size<<" Byte"<<endl;
+            else if(S_ISDIR(mode)) {
+                type = "directory";
+            }
+            else if(S_ISLNK(mode)) {
+                type = "symbolic link";
+            }
+            else if(S_ISFIFO(mode)) {
+                type = "FIFO";
+            }
+            else if(S_ISSOCK(mode)) {
+                type = "socket";
+            }
+            else if(S_ISCHR(mode)) {
+                type = "character device";
+            }
+            else if(S_ISBLK(mode)) {
+                type = "block device";
+            }
+            else{
+                type = "Unknown";
+            }
+            cout<<path<<"'s type is "<<'"'<<type<<'"'<<" and takes up "<<file_info.st_size<<" Byte"<<endl;
         }
     }
 }
@@ -1091,21 +1097,22 @@ SetcoreCommand::SetcoreCommand(const char* cmd_line) : BuiltInCommand(cmd_line){
 
 void SetcoreCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
-    if(this->args_size!=3){ //TODO:make sure it can be only 3 argument - not less
+    if(this->args_size!=3 ||  !isNumber(this->arguments[1]) || !isNumber(this->arguments[2])){
         cerr<<"smash error: setcore: invalid arguments"<<endl;
         return;
     }
     int curr_num_of_cores = get_nprocs();
-    if(stoi(this->arguments[2]) > curr_num_of_cores){
+    if(stoi(this->arguments[2]) > curr_num_of_cores || strlen(this->arguments[2]) > 1 ){
         cerr<<"smash error: setcore: invalid core number"<<endl;
         return;
     }
     JobsList::JobEntry* curr_job = smash.jobs_list.getJobById(stoi(this->arguments[1]));
     if(curr_job == nullptr){
-        cerr<<"smash error: setcore: job-id "<<this->arguments[1]<<"does not exist"<<endl;
+        cerr<<"smash error: setcore: job-id "<<this->arguments[1]<<" does not exist"<<endl;
         return;
     }
-    int pid = curr_job->j_id;
+
+    int pid = curr_job->j_process_id;
     cpu_set_t cpu_set;
     CPU_ZERO(&cpu_set);
     CPU_SET(stoi(this->arguments[2]), &cpu_set); //TODO:check this is the correct way to do this

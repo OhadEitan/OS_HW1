@@ -7,7 +7,6 @@ using namespace std;
 
 void ctrlZHandler(int sig_num) {
     ////Ctrl+Z causes the shell to send SIGTSTP to the process running in the foreground
-    // TODO: Add your implementation
     SmallShell& smash = SmallShell::getInstance();
     cout << "smash: got ctrl-Z" << endl;
     if (smash.current_fg_pid < 0 )
@@ -15,18 +14,18 @@ void ctrlZHandler(int sig_num) {
         return;
     }
     else {
-        //cout << "1" << endl;
         JobsList::JobEntry *selectedJob = smash.jobs_list.getJobByPID(smash.current_fg_pid);
         ExternalCommand* command;
         if(selectedJob== nullptr){
             //meaning it never was on the job list
             command = new ExternalCommand(smash.cmd_running.c_str());
-
         }
         else{
             string cmd_to_stop = selectedJob->j_command->cmd_line;
             selectedJob->is_stopped = true;
             command = new ExternalCommand(cmd_to_stop.c_str());
+            //smash.jobs_list.removeJobById(selectedJob->j_id);
+
         }
         cout << "smash: process " << smash.current_fg_pid << " was stopped" << endl;
         //string cmd_to_stop = smash.cmd_running;
@@ -39,7 +38,6 @@ void ctrlZHandler(int sig_num) {
 
 void ctrlCHandler(int sig_num) {
     //// Ctrl+C causes the shell to send SIGINT to the process running in the foreground
-    // TODO: Add your implementation
     SmallShell& smash = SmallShell::getInstance();
     cout << "smash: got ctrl-C" << endl;
     if(smash.current_fg_pid >= 0) {
@@ -48,7 +46,9 @@ void ctrlCHandler(int sig_num) {
         kill(smash.current_fg_pid, SIGKILL);
         cout << "smash: process " << smash.current_fg_pid << " was killed" << endl;
         smash.current_fg_pid = -1;
-
+    }
+    else{
+        return;
     }
 }
 
