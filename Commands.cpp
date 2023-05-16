@@ -133,7 +133,6 @@ Command::~Command() {
 
 
 SmallShell::SmallShell(): prompt("smash> "),jobs_list(), current_fg_pid(-1), cmd_running("")  {
-// TODO: add your implementation
     smash_pid= getpid();
 
     if (smash_pid == -1) // when pid didnt work
@@ -604,7 +603,6 @@ void ForegroundCommand::execute() {
             string error = "smash error: fg: job-id ";
             error.append(this->arguments[1]);
             error.append(" does not exist");
-            //perror(error.c_str());
             cerr << error<< endl;
             return;
 
@@ -639,7 +637,6 @@ void ForegroundCommand::execute() {
         perror("smash error: waitpid failed");
         return;
     }
-    jobs_list->removeJobById(selectedJob->j_id);
 
 }
 
@@ -700,15 +697,7 @@ void BackgroundCommand::execute() {
 
 
 bool isNumber(string str) {
-//    string is_number = str.substr(0, str.size()-1);
-//    for (char c : is_number) {
-//        if (!std::isdigit(c)) {
-//            return false;
-//        }
-//    }
-//    //return true;
-
-    for (int i = 0; i < str.size(); i++) {
+    for (unsigned int i = 0; i < str.size(); i++) {
         if (!std::isdigit(str[i])) {
             return false;
         }
@@ -816,6 +805,7 @@ void QuitCommand::execute()
     SmallShell& smash = SmallShell::getInstance();
     if (this->args_size > 1) {
         if (strcmp(arguments[1], "kill") == 0) {
+
             cout << "smash: sending SIGKILL signal to " << smash.jobs_list.getJobsListSize() << " jobs:" << endl;
             smash.jobs_list.killAllJobs();
         }
@@ -825,6 +815,8 @@ void QuitCommand::execute()
 
 int  JobsList::getJobsListSize()
 {
+    SmallShell& smash = SmallShell::getInstance();
+    smash.jobs_list.removeFinishedJobs();
     int counter =0;
     auto it = this->jobs_list.begin();
     while (it!=this->jobs_list.end()) {
@@ -886,6 +878,12 @@ void ExternalCommand::execute() {
 
         if (is_complicated)
         {
+            if (is_background)
+            {
+                _removeBackgroundSign(cmd_line);
+                smash.current_fg_pid = -1; //TODO: do this to every background situation
+            }
+
             char *bash_args[] = {
                     (char *) "/bin/bash",
                     (char *) "-c",
@@ -902,20 +900,15 @@ void ExternalCommand::execute() {
         {
             if (is_background)
             {
-                deleteLastChar( this->arguments[args_size-1]);
+                _removeBackgroundSign(cmd_line);
                 smash.current_fg_pid = -1; //TODO: do this to every background situation
             }
 //            else{
 //                smash.current_fg_pid = getpid(); //TODO:make sure its the correct way
 //            }
-            char **cmd_args = new char * ;
-            for(int i=0;i<args_size;i++)
-            {
-                cmd_args[i]=&arguments[i][0];
-            }
-            cmd_args[args_size]= NULL;
-
-            if(execvp(arguments[0], cmd_args) ==-1)
+            char** cmd_args = new char *[MAX_ARGS_IN_CMD];
+            _parseCommandLine(this->cmd_line,cmd_args);
+            if(execvp(cmd_args[0], cmd_args) ==-1)
             {
                 perror("smash error: execvp failed");
                 return;
@@ -943,6 +936,7 @@ void ExternalCommand::execute() {
     }
 
 }
+
 
 
 PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {}
@@ -981,7 +975,6 @@ void PipeCommand::execute() {
                 pipeChannel = 2;
             }
 
-            bool ischild = false;
             __pid_t pid = fork();
             if (pid < 0) {
                 perror("smash error: fork failed");
@@ -1007,7 +1000,6 @@ void PipeCommand::execute() {
                     return;
                 }
 
-                ischild = true;
                 smash.executeCommand(first_command.c_str());
 
                 if (close(pipe_fd[1]) == -1) {
@@ -1015,7 +1007,6 @@ void PipeCommand::execute() {
                 }
                 exit(0);
             } else {
-                ischild = false;
                 close(pipe_fd[1]);
                 int saved_std_in = dup(0);
                 if (saved_std_in == -1) {
@@ -1050,14 +1041,14 @@ GetFileTypeCommand::GetFileTypeCommand(const char *cmd_line) : BuiltInCommand(cm
 
 void GetFileTypeCommand::execute() {
     char* path = this->arguments[1];
-    if(this->args_size>2){
-        cerr<<"smash error: gettype: invalid arguments"<<endl;
+    if((this->args_size>2 && string(this->arguments[2]).find('&')==-1)|| this->args_size <2){
+        cerr<<"smash error: getfiletype: invalid arguments"<<endl;
         return;
     }
     else{
         struct stat file_info;
-        if(stat(this->arguments[1],&file_info)==-1){
-            perror("smash error: stat failed");
+        if(lstat(this->arguments[1],&file_info)==-1){
+            perror("smash error: lstat failed");
             return;
         }
         else{
@@ -1186,7 +1177,6 @@ void RedirectionCommand::execute() {
 ChmodCommand::ChmodCommand(const char *cmd_line) : BuiltInCommand(cmd_line){}
 
 void ChmodCommand::execute() {
-    SmallShell& smash = SmallShell::getInstance();
     if(this->args_size != 3 || !isOctalDigit(this->arguments[1])){
         cerr<<"smash error: chmod: invalid arguments"<<endl;
         return;
@@ -1202,27 +1192,5 @@ void ChmodCommand::execute() {
 }
 
 
+//void SmallShell::handle_alarm() {}
 
-
-
-
-void SmallShell::handle_alarm() {}
-
-
-
-
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-
-*/
