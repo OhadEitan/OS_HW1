@@ -201,12 +201,12 @@ public:
 class SmallShell {
 private:
 public:
-    string cmd_running;
     string prompt;
     JobsList jobs_list;
     int smash_pid;
     string last_pwd;
     int current_fg_pid;
+    string cmd_running;
 
     SmallShell();
 

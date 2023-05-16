@@ -132,7 +132,7 @@ Command::~Command() {
 
 
 
-SmallShell::SmallShell():  cmd_running(""),prompt("smash> "),jobs_list(), current_fg_pid(-1)  {
+SmallShell::SmallShell():   prompt("smash> "),jobs_list(), current_fg_pid(-1), cmd_running("")   {
     smash_pid= getpid();
 
     if (smash_pid == -1) // when pid didnt work
