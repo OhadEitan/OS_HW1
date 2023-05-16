@@ -132,7 +132,7 @@ Command::~Command() {
 
 
 
-SmallShell::SmallShell(): prompt("smash> "),jobs_list(), current_fg_pid(-1), cmd_running("")  {
+SmallShell::SmallShell():  cmd_running(""),prompt("smash> "),jobs_list(), current_fg_pid(-1)  {
     smash_pid= getpid();
 
     if (smash_pid == -1) // when pid didnt work
@@ -1041,7 +1041,7 @@ GetFileTypeCommand::GetFileTypeCommand(const char *cmd_line) : BuiltInCommand(cm
 
 void GetFileTypeCommand::execute() {
     char* path = this->arguments[1];
-    if((this->args_size>2 && string(this->arguments[2]).find('&')==-1)|| this->args_size <2){
+    if((this->args_size>2 && string(this->arguments[2]).find('&')== string::npos)|| this->args_size <2){
         cerr<<"smash error: getfiletype: invalid arguments"<<endl;
         return;
     }

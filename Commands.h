@@ -102,8 +102,8 @@ public:
         int j_id;
         int j_process_id;
         Command* j_command;
-        time_t time_job;
         bool is_stopped;
+        time_t time_job;
 //      bool is_background;
 //      bool is_stopped;
 //      bool is_timed_job;
@@ -207,24 +207,6 @@ public:
     int smash_pid;
     string last_pwd;
     int current_fg_pid;
-
-
-
-
-
-
-
-    //char* last_pwd;
-    // int current_process_running_in_foreground_pid;
-    //  std::string* last_command;
-    //   bool cur_pipe;
-    //   AlarmsList alarms_list;
-    //   time_t current_duration;
-    //   std::string* last_alarm;
-    //   bool process_in_foreground_got_alarm;
-    //  int fg_job_id;
-    //  bool is_fg_timed_command;
-    //   int smash_pid;
 
     SmallShell();
 
