@@ -287,7 +287,6 @@ void ShowPidCommand::execute() {
     if(shell.smash_pid >= 0)
     {
         cout << "smash pid is " << shell.smash_pid << endl;
-
     }
     else
     {
@@ -938,16 +937,17 @@ void ExternalCommand::execute() {
 }
 
 
-
+#define RD 0
+#define WT 1
+#define STDERR 2
 PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {}
 
 void PipeCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
-
-    ////“|” will produce a pipe which redirects command1 stdout to its write channel and command2 std
-    ////“|&” will produce a pipe which redirects command1 stderr to the pipe’s write channel and command2 stdin to the pipe’s read channel.
-    string pipe_symbol = "";
     string second_command = "";
+    string pipe_symbol = "";
+    int pipe_fd[2];
+    string first_command = string(cmd_line).substr(0, string(cmd_line).find("|"));
     if (string(cmd_line).find("|&") != std::string::npos) {
         pipe_symbol = "|&";
         second_command = string(cmd_line).substr(string(cmd_line).find("|&") + 2);
@@ -955,81 +955,83 @@ void PipeCommand::execute() {
         pipe_symbol = "|";
         second_command = string(cmd_line).substr(string(cmd_line).find("|") + 1);
     }
-    if (pipe_symbol == "") {
-        ////handle invalid input (perror here needs to be changed)
+
+    int pipeChannel;
+    if (pipe_symbol == "|") {
+        pipeChannel = 1;
+    } else //symbol is |&
+    {
+        pipeChannel = 2;
+    }
+
+    if(pipe(pipe_fd) != 0 ) {
         perror("smash error: pipe failed");
         return;
-    } else {
+    }
 
-        string first_command = string(cmd_line).substr(0, string(cmd_line).find("|"));
-        int pipe_fd[2];
-        if (pipe(pipe_fd) != 0) {
-            perror("smash error: pipe failed");
+    int pid = fork();
+    if (pid == 0) {
+        setpgrp();
+
+        close(pipe_fd[0]);
+        if (dup2(pipe_fd[1], pipeChannel) == -1) {
+            perror("smash error: dup failed");
+            exit(0);
+        }
+
+        Command *cmd1 = smash.CreateCommand(first_command.c_str());
+        if (cmd1 == nullptr) {
+            delete cmd1;
+        }
+        if (_isBackgroundCommand(cmd_line))
+        {
+            smash.current_fg_pid = -1;
+        }
+        cmd1->execute();
+
+        if (close(pipe_fd[1]) == -1) {
+            perror("smash error: close failed");
+        }
+
+        exit(0);
+    }
+    else {
+        close(pipe_fd[1]);
+        int old_out = dup(0);
+        if (old_out == -1) {
+            perror("smash error: dup failed");
             return;
-        } else {
-            int pipeChannel;
-            if (pipe_symbol == "|") {
-                pipeChannel = 1;
-            } else //symbol is |&
-            {
-                pipeChannel = 2;
-            }
+        }
+        if (dup2(pipe_fd[0], 0) == -1) {
+            perror("smash error: dup failed");
+            return;
+        }
+        Command *cmd = smash.CreateCommand(second_command.c_str());
+        if (cmd == nullptr) {
+            delete cmd;
+        }
+        if (_isBackgroundCommand(cmd_line))
+        {
+            smash.current_fg_pid = -1;
+        }
 
-            __pid_t pid = fork();
-            if (pid < 0) {
-                perror("smash error: fork failed");
-                if (close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
-                    perror("smash error: close failed");
-                }
-                return;
-            }
-            if (pid == 0) {
-                if (setpgrp() == -1) {
-                    perror("smash error: setpgrp failed");
-                    if (close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
-                        perror("smash error: close failed");
-                    }
-                    return;
-                }
-                close(pipe_fd[0]); // son close reading
-                if (dup2(pipe_fd[1], pipeChannel) == -1) {
-                    perror("smash error: dup2 failed");
-                    if (close(pipe_fd[0]) == -1 || close(pipe_fd[1]) == -1) {
-                        perror("smash error :close failed");
-                    }
-                    return;
-                }
+        cmd->execute();
+        if (close(pipe_fd[0]) == -1) {
+            perror("smash error: close failed");
+        }
+        if (dup2(old_out, 0) == -1) {
+            perror("smash error: dup failed");
+            return;
+        }
+        if(close(old_out) == -1){
+            perror("smash error: close failed");
+        }
 
-                smash.executeCommand(first_command.c_str());
-
-                if (close(pipe_fd[1]) == -1) {
-                    perror("smash error: close failed");
-                }
-                exit(0);
-            } else {
-                close(pipe_fd[1]);
-                int saved_std_in = dup(0);
-                if (saved_std_in == -1) {
-                    perror("smash error: dup failed");
-                    return;
-                }
-                if (dup2(pipe_fd[0], 0) == -1) {
-                    perror("smash error: dup failed");
-                    return;
-                }
-
-                smash.executeCommand(second_command.c_str());
-                if (close(pipe_fd[0]) == -1) {
-                    perror("smash error: close failed");
-                }
-                if (dup2(saved_std_in, 0) == -1) {
-                    perror("smash error: dup failed");
-                    return;
-                }
-                if (close(saved_std_in) == -1) {
-                    perror("smash error: close failed");
-                }
-            }
+        int status;
+        if(waitpid(pid,&status, WUNTRACED) == -1)
+        {
+            perror("smash error: waitpid failed");
+            return;
         }
     }
 }
