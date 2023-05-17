@@ -752,6 +752,12 @@ void KillCommand::execute()
         cerr<< "smash error: kill: invalid arguments" <<endl;
         return;
     }
+    int job_id = stoi(this->arguments[2]);
+    if(smash.jobs_list.getJobById(job_id)== nullptr){
+        cerr << "smash error: kill: job-id " << job_id << " does not exist" << endl;
+        return;
+    }
+    
     if(this->arguments[1][0]=='-'){
         int kill_num = stoi(string(this->arguments[1]).substr(1));
         if(kill_num<0 || kill_num>31){
@@ -759,11 +765,7 @@ void KillCommand::execute()
             return;
         }
     }
-    int job_id = stoi(this->arguments[2]);
-    if(smash.jobs_list.getJobById(job_id)== nullptr){
-        cerr << "smash error: kill: job-id " << job_id << " does not exist" << endl;
-        return;
-    }
+
     int signal = stoi(signal_num);
     int job_pid = smash.jobs_list.getJobById(job_id)->j_process_id;
 
